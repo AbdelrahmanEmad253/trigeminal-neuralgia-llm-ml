@@ -14,6 +14,9 @@
 # The few-shot texts below are INVENTED illustrations, not real published text.
 
 import json
+import logging
+
+log = logging.getLogger(__name__)
 
 SCHEMA_VERSION = "v2"
 
@@ -139,7 +142,7 @@ FEW_SHOT_EXAMPLES = [
 ]
 
 
-def build_extraction_prompt(case_text):
+def build_extraction_prompt(case_text: str) -> str:
     lines = []
     for f, allowed in VOCAB.items():
         lines.append(f"- {f}: " + (" | ".join(allowed) if allowed else "free value"))
@@ -160,7 +163,7 @@ Text: {case_text}
 JSON:"""
 
 
-def validate_record(rec):
+def validate_record(rec: object) -> list[str]:
     """Return a list of problems for one extracted patient dict (empty list = ok)."""
     problems = []
     if not isinstance(rec, dict):
@@ -178,9 +181,10 @@ def validate_record(rec):
 
 
 if __name__ == "__main__":
-    print(build_extraction_prompt("A 45-year-old man with V1 pain, paroxysmal, treated with carbamazepine."))
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
+    log.info(build_extraction_prompt("A 45-year-old man with V1 pain, paroxysmal, treated with carbamazepine."))
     for ex in FEW_SHOT_EXAMPLES:
         recs = ex["json"] if isinstance(ex["json"], list) else [ex["json"]]
         for r in recs:
             assert validate_record(r) == [], validate_record(r)
-    print("\nall few-shot examples pass validate_record")
+    log.info("\nall few-shot examples pass validate_record")

@@ -19,7 +19,7 @@ from b0_schema import FEATURE_SETS, TASKS, categorical_in, numeric_in, binary_in
 NOT_USABLE_LABELS = {"not_reported", ""}
 
 
-def prepare_task(df, task, feature_set):
+def prepare_task(df: pd.DataFrame, task: str, feature_set: str) -> tuple:
     """Rows with a usable label -> (X, y, groups, labels). Drops 'not_reported'/unmapped targets."""
     spec = TASKS[task]
     if feature_set not in spec["sets"]:
@@ -34,7 +34,7 @@ def prepare_task(df, task, feature_set):
     return X, d[spec["target"]].astype(str), d["pmid"].astype(str), spec["labels"]
 
 
-def build_preprocessor(features):
+def build_preprocessor(features: list[str]) -> ColumnTransformer:
     num, cat, binary = numeric_in(features), categorical_in(features), binary_in(features)
     return ColumnTransformer([
         # NaN age/duration -> median + a 0/1 "was missing" column (missingness is informative here)
@@ -45,7 +45,7 @@ def build_preprocessor(features):
     ], sparse_threshold=0.0)
 
 
-def get_models(seed=0):
+def get_models(seed: int = 0) -> dict:
     """Estimators WITHOUT preprocessing; make_pipeline() attaches it."""
     return {
         "dummy_most_frequent": DummyClassifier(strategy="most_frequent"),
@@ -57,11 +57,11 @@ def get_models(seed=0):
     }
 
 
-def make_pipeline(model, features):
+def make_pipeline(model, features: list[str]) -> Pipeline:
     return Pipeline([("prep", build_preprocessor(features)), ("model", clone(model))])
 
 
-def grouped_splits(y, groups, n_splits=5, n_repeats=5, seed=0):
+def grouped_splits(y, groups, n_splits: int = 5, n_repeats: int = 5, seed: int = 0) -> list:
     """Repeated stratified GROUP k-fold: patients of one paper never straddle train/test.
 
     Yields (repeat, fold, train_idx, test_idx). n_splits is lowered automatically if the

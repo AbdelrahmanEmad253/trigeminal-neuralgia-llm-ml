@@ -9,6 +9,10 @@ from b2_pipeline import get_models
 from b3_evaluate import evaluate, check_against_dummy
 from b6_plots import plot_confusion, plot_importance
 from sklearn.ensemble import RandomForestClassifier
+import logging
+
+log = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO, format="%(message)s")
 
 OUT = "outputs"
 os.makedirs(OUT, exist_ok=True)
@@ -18,17 +22,17 @@ tag = "" if REAL else "MOCK DATA - "
 prefix = "real" if REAL else "mock"
 if not REAL:
     df.to_csv(f"{OUT}/mock_clean_dataset.csv", index=False)
-    print("!! MOCK (synthetic) data: scores below say nothing about trigeminal neuralgia !!")
+    log.info("!! MOCK (synthetic) data: scores below say nothing about trigeminal neuralgia !!")
 
 all_summaries = []
 for task, spec in TASKS.items():
     for fs in spec["sets"]:
-        print(f"\n===== {task} / {fs} =====")
+        log.info(f"\n===== {task} / {fs} =====")
         r = evaluate(df, task, fs, n_repeats=5)
-        print(f"cases={r['n_cases']} papers={r['n_papers']} class_counts={r['class_counts']}")
-        print(r["summary"].to_string())
+        log.info(f"cases={r['n_cases']} papers={r['n_papers']} class_counts={r['class_counts']}")
+        log.info(r["summary"].to_string())
         beats, dummy = check_against_dummy(r["summary"])
-        print(f"best dummy macro-F1={dummy:.3f}; models beating it by >0.05: {beats}")
+        log.info(f"best dummy macro-F1={dummy:.3f}; models beating it by >0.05: {beats}")
         s = r["summary"].reset_index(); s.insert(0, "feature_set", fs); s.insert(0, "task", task)
         all_summaries.append(s)
         r["per_class"].to_csv(f"{OUT}/{prefix}_{fs}_per_class.csv")
@@ -44,12 +48,12 @@ for task, spec in TASKS.items():
         plot_importance(imp, f"{tag}{fs}: permutation importance (random forest)", f"{OUT}/{prefix}_{fs}_importance.png")
 
 # sanity check: shuffled labels must fall to dummy level
-print("\n===== SANITY: shuffled labels (T1_with_imaging) =====")
+log.info("\n===== SANITY: shuffled labels (T1_with_imaging) =====")
 rs = evaluate(df, "T1", "T1_with_imaging", n_repeats=3, shuffle_labels=True)
-print(rs["summary"].to_string())
+log.info(rs["summary"].to_string())
 beats, dummy = check_against_dummy(rs["summary"])
-print("models beating dummy on shuffled labels (all must be False):", beats)
-print("SANITY", "PASS" if not any(beats.values()) else "FAIL - investigate a leak")
+log.info("models beating dummy on shuffled labels (all must be False): %s", beats)
+log.info("SANITY %s", "PASS" if not any(beats.values()) else "FAIL - investigate a leak")
 
 pd.concat(all_summaries).to_csv(f"{OUT}/{prefix}_results_summary.csv", index=False)
-print(f"\nsaved tables + plots to ./{OUT}/")
+log.info(f"\nsaved tables + plots to ./{OUT}/")

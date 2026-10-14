@@ -45,15 +45,15 @@ CLEAN_COLUMNS = (ID_COLS + NUMERIC + ["sex", "laterality", "pain_character"] + B
                                      "underlying_cause"] + TX_FLAGS + [TARGET_CLASS, TARGET_OUTCOME])
 
 
-def categorical_in(features):
+def categorical_in(features: list[str]) -> list[str]:
     """Categorical columns inside a feature list (TN_classification counts when used as an input)."""
     cats = set(CATEGORICAL) | {TARGET_CLASS}
     return [f for f in features if f in cats]
 
 
-def numeric_in(features):
+def numeric_in(features: list[str]) -> list[str]:
     return [f for f in features if f in NUMERIC]
 
 
-def binary_in(features):
+def binary_in(features: list[str]) -> list[str]:
     return [f for f in features if f not in set(NUMERIC) | set(CATEGORICAL) | {TARGET_CLASS}]

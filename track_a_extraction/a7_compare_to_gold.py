@@ -19,20 +19,23 @@ import argparse
 import numpy as np
 import pandas as pd
 from a4_extraction_prompt import VOCAB, EXTRACTION_FIELDS
+import logging
+
+log = logging.getLogger(__name__)
 
 NR = "not_reported"
 FREE_TEXT = {"trigger_factors", "treatment_given", "outcome_detail"}
 
 
-def is_nr(x):
+def is_nr(x: object) -> bool:
     return x is None or (isinstance(x, float) and np.isnan(x)) or str(x).strip().lower() in ("", NR, "nan", "not reported")
 
 
-def vocab_norm(x):
+def vocab_norm(x: object) -> str:
     return NR if is_nr(x) else str(x).strip().lower().replace(" ", "_")
 
 
-def branch_set(x):
+def branch_set(x: object) -> frozenset:
     if is_nr(x):
         return frozenset()
     s = str(x).lower()
@@ -46,7 +49,7 @@ def branch_set(x):
     return frozenset(out)
 
 
-def duration_months(x):
+def duration_months(x: object) -> float:
     if is_nr(x):
         return np.nan
     s = str(x).lower()
@@ -58,7 +61,7 @@ def duration_months(x):
     return sum(float(n) * mult[u] for n, u in parts) if parts else np.nan
 
 
-def same_value(field, g, a):
+def same_value(field: str, g: object, a: object) -> bool:
     """Both already known to be non-empty."""
     if field == "patient_age":
         try:
@@ -75,7 +78,7 @@ def same_value(field, g, a):
     return vocab_norm(g) == vocab_norm(a)
 
 
-def effectively_nr(field, x):
+def effectively_nr(field: str, x: object) -> bool:
     if field == "branch_involved":
         return is_nr(x) or len(branch_set(x)) == 0
     if field == "symptom_duration":
@@ -83,7 +86,7 @@ def effectively_nr(field, x):
     return is_nr(x)
 
 
-def box(field, g, a):
+def box(field: str, g: object, a: object) -> str:
     gn, an = effectively_nr(field, g), effectively_nr(field, a)
     if gn and an:
         return "both_not_reported"
@@ -94,7 +97,7 @@ def box(field, g, a):
     return "correct" if same_value(field, g, a) else "wrong_value"
 
 
-def compare(ai, gold):
+def compare(ai: pd.DataFrame, gold: pd.DataFrame) -> tuple:
     ai = ai.copy(); gold = gold.copy()
     ai["case_id"] = ai["case_id"].astype(str); gold["case_id"] = gold["case_id"].astype(str)
     ai = ai.drop_duplicates("case_id").set_index("case_id")
@@ -125,7 +128,7 @@ def compare(ai, gold):
     return summary, pd.DataFrame(details), pd.DataFrame(free), no_ai, len(both)
 
 
-def cohens_kappa(a, b):
+def cohens_kappa(a: list, b: list) -> float:
     a, b = list(a), list(b)
     n = len(a)
     if n == 0:
@@ -136,7 +139,7 @@ def cohens_kappa(a, b):
     return np.nan if pe == 1 else (po - pe) / (1 - pe)
 
 
-def annotator_agreement(ga, gb):
+def annotator_agreement(ga: pd.DataFrame, gb: pd.DataFrame) -> tuple[pd.DataFrame, int]:
     ga = ga.drop_duplicates("case_id").set_index("case_id"); gb = gb.drop_duplicates("case_id").set_index("case_id")
     common = [c for c in ga.index if c in gb.index]
     rows = []
@@ -150,6 +153,7 @@ def annotator_agreement(ga, gb):
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
     ap = argparse.ArgumentParser()
     sub = ap.add_subparsers(dest="cmd", required=True)
     p1 = sub.add_parser("ai"); p1.add_argument("ai_csv"); p1.add_argument("gold_csv")
@@ -159,19 +163,19 @@ if __name__ == "__main__":
     if a.cmd == "ai":
         ai = pd.read_csv(a.ai_csv, dtype=str); gold = pd.read_csv(a.gold_csv, dtype=str)
         summary, details, free, no_ai, n_both = compare(ai, gold)
-        print(f"gold cases: {len(gold)}; matched in AI output: {n_both}; AI produced no row for: {len(no_ai)}")
+        log.info(f"gold cases: {len(gold)}; matched in AI output: {n_both}; AI produced no row for: {len(no_ai)}")
         if no_ai:
-            print("  (check case_id numbering, or the AI skipped/failed these):", no_ai[:10])
-        print(summary.to_string(index=False))
+            log.info("  (check case_id numbering, or the AI skipped/failed these): %s", no_ai[:10])
+        log.info(summary.to_string(index=False))
         summary.to_csv("a7_per_field_accuracy.csv", index=False)
         details.to_csv("a7_disagreements.csv", index=False)
         free.to_csv("a7_free_text_review.csv", index=False)
-        print("\nwrote a7_per_field_accuracy.csv, a7_disagreements.csv, a7_free_text_review.csv")
-        print("Read 'invented' first: that is the AI making up facts.")
+        log.info("\nwrote a7_per_field_accuracy.csv, a7_disagreements.csv, a7_free_text_review.csv")
+        log.info("Read 'invented' first: that is the AI making up facts.")
     else:
         ga = pd.read_csv(a.gold_a, dtype=str); gb = pd.read_csv(a.gold_b, dtype=str)
         res, n = annotator_agreement(ga, gb)
-        print(f"cases both annotators filled: {n}")
-        print(res.to_string(index=False))
-        print("\nkappa guide: above 0.8 very good, 0.6-0.8 good, 0.4-0.6 moderate, below 0.4 weak. "
+        log.info(f"cases both annotators filled: {n}")
+        log.info(res.to_string(index=False))
+        log.info("\nkappa guide: above 0.8 very good, 0.6-0.8 good, 0.4-0.6 moderate, below 0.4 weak. "
               "NaN = no variation in that column.")

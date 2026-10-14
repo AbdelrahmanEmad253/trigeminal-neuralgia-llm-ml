@@ -1,6 +1,7 @@
 # B6 - diagnostic plots. One hue (blue sequential ramp / single series), direct value labels,
 # light chart surface, text in ink colours (never the series colour).
 import textwrap
+import pandas as pd
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -12,7 +13,7 @@ CMAP = LinearSegmentedColormap.from_list("seq_blue", RAMP)
 BAR = "#2a78d6"
 
 
-def plot_confusion(cm_df, title, path):
+def plot_confusion(cm_df: pd.DataFrame, title: str, path: str) -> None:
     """cm_df: pooled out-of-fold counts (rows = true). Colour = row-normalised share, label = count."""
     counts = cm_df.values
     share = counts / counts.sum(axis=1, keepdims=True).clip(min=1)
@@ -33,7 +34,7 @@ def plot_confusion(cm_df, title, path):
     fig.tight_layout(); fig.savefig(path, dpi=160, facecolor=SURFACE); plt.close(fig)
 
 
-def plot_importance(imp_series, title, path, top=12):
+def plot_importance(imp_series: pd.Series, title: str, path: str, top: int = 12) -> None:
     """imp_series: mean permutation importance (drop in macro-F1) per raw column."""
     s = imp_series.sort_values(ascending=False).head(top)[::-1]
     fig, ax = plt.subplots(figsize=(6, 0.34 * len(s) + 1.3), facecolor=SURFACE)

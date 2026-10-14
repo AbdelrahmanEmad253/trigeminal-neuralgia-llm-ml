@@ -65,7 +65,7 @@ def evaluate(df, task, feature_set, n_splits=5, n_repeats=5, seed=0,
                 n_cases=len(y), n_papers=groups.nunique(), class_counts=y.value_counts().to_dict(), labels=labels)
 
 
-def check_against_dummy(summary, margin=0.05):
+def check_against_dummy(summary: pd.DataFrame, margin: float = 0.05) -> tuple[dict[str, bool], float]:
     """Models that don't beat the best dummy macro-F1 by `margin` carry no usable signal."""
     dummy_best = summary.loc[summary.index.str.startswith("dummy"), "macro_f1_mean"].max()
     real = summary.loc[~summary.index.str.startswith("dummy")]

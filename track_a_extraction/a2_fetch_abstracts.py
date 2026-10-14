@@ -17,6 +17,9 @@ import time
 import requests
 import xml.etree.ElementTree as ET
 import pandas as pd
+import logging
+
+log = logging.getLogger(__name__)
 
 EUTILS_BASE = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils"
 MY_EMAIL = os.environ.get("NCBI_EMAIL", "your_email@example.com")
@@ -32,17 +35,17 @@ def http_get(url, params, retries=4, timeout=60):
             return r
         except requests.RequestException as e:
             wait = 2 ** attempt
-            print(f"  request failed ({e}); retry in {wait}s")
+            log.info(f"  request failed ({e}); retry in {wait}s")
             time.sleep(wait)
     raise RuntimeError(f"giving up on {url}")
 
 
-def chunk_list(lst, size):
+def chunk_list(lst: list, size: int) -> list[list]:
     for i in range(0, len(lst), size):
         yield lst[i:i + size]
 
 
-def parse_pubmed_xml(content):
+def parse_pubmed_xml(content: bytes) -> list[dict]:
     """Parse an efetch XML payload (bytes/str) into a list of record dicts."""
     root = ET.fromstring(content)
     records = []
@@ -81,7 +84,7 @@ def parse_pubmed_xml(content):
     return records
 
 
-def fetch_abstracts(pmids, batch_size=200):
+def fetch_abstracts(pmids: list[str], batch_size: int = 200) -> list[dict]:
     records = []
     for batch in chunk_list(pmids, batch_size):
         params = {
@@ -94,13 +97,13 @@ def fetch_abstracts(pmids, batch_size=200):
 
     got = {r["pmid"] for r in records}
     missing = [p for p in pmids if p not in got]
-    print(f"got {len(records)} records back; {len(missing)} requested PMIDs not returned")
+    log.info(f"got {len(records)} records back; {len(missing)} requested PMIDs not returned")
     if missing:
-        print("  missing (first 10):", missing[:10])
+        log.info("  missing (first 10): %s", missing[:10])
     return records
 
 
-def check_pmc_links(pmids, batch_size=200):
+def check_pmc_links(pmids: list[str], batch_size: int = 200) -> dict[str, str]:
     # returns {pmid: pmcid} - empty string if no PMC version found
     result = {p: "" for p in pmids}
     for batch in chunk_list(pmids, batch_size):
@@ -117,11 +120,12 @@ def check_pmc_links(pmids, batch_size=200):
         time.sleep(0.34)
 
     n_found = len([v for v in result.values() if v])
-    print(f"{n_found} out of {len(pmids)} have a PMC version (not necessarily open-access)")
+    log.info(f"{n_found} out of {len(pmids)} have a PMC version (not necessarily open-access)")
     return result
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
     with open("pmids.txt") as f:
         pmids = [line.strip() for line in f if line.strip()]
 
@@ -133,4 +137,4 @@ if __name__ == "__main__":
 
     df = pd.DataFrame(records)
     df.to_csv("abstracts_raw.csv", index=False)
-    print(f"saved {len(df)} rows to abstracts_raw.csv")
+    log.info(f"saved {len(df)} rows to abstracts_raw.csv")

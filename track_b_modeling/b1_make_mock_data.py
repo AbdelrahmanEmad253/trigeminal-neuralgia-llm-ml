@@ -13,6 +13,9 @@
 import numpy as np
 import pandas as pd
 from b0_schema import CLEAN_COLUMNS, CLASSES
+import logging
+
+log = logging.getLogger(__name__)
 
 NR = "not_reported"
 
@@ -26,7 +29,7 @@ def _gap(rng, value, p):
     return NR if rng.random() < p else value
 
 
-def make_mock(n_papers=200, seed=0, prior=(0.50, 0.25, 0.25), within_paper_agreement=0.8):
+def make_mock(n_papers: int = 200, seed: int = 0, prior: tuple = (0.50, 0.25, 0.25), within_paper_agreement: float = 0.8) -> pd.DataFrame:
     rng = np.random.default_rng(seed)
     rows = []
     for p in range(n_papers):
@@ -105,7 +108,8 @@ def _nan_gap(rng, value, p):
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
     df = make_mock()
     df.to_csv("mock_clean_dataset.csv", index=False)
-    print(df.shape, "-> mock_clean_dataset.csv (SYNTHETIC)")
-    print(df["TN_classification"].value_counts())
+    log.info("%s -> mock_clean_dataset.csv (SYNTHETIC)", df.shape)
+    log.info("%s", df["TN_classification"].value_counts())

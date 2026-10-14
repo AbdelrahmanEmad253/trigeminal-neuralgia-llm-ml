@@ -20,9 +20,12 @@
 import argparse
 import pandas as pd
 from a4_extraction_prompt import VOCAB, EXTRACTION_FIELDS
+import logging
+
+log = logging.getLogger(__name__)
 
 
-def make_template(abstracts, n, seed, extracted=None):
+def make_template(abstracts: pd.DataFrame, n: int, seed: int, extracted: pd.DataFrame | None = None) -> pd.DataFrame:
     abstracts = abstracts.copy()
     abstracts["pmid"] = abstracts["pmid"].astype(str)
     n = min(n, len(abstracts))
@@ -46,7 +49,7 @@ def make_template(abstracts, n, seed, extracted=None):
     return sheet.sample(frac=1, random_state=seed + 1).reset_index(drop=True)   # shuffled order
 
 
-def allowed_values_text():
+def allowed_values_text() -> str:
     lines = ["ALLOWED VALUES (write not_reported when the abstract does not say)", ""]
     for f, allowed in VOCAB.items():
         lines.append(f"{f}: " + (" | ".join(allowed) if allowed else "free text (patient_age = whole number of years)"))
@@ -54,6 +57,7 @@ def allowed_values_text():
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
     ap = argparse.ArgumentParser()
     ap.add_argument("--abstracts", default="abstracts_filtered.csv")
     ap.add_argument("--n", type=int, default=50)
@@ -65,5 +69,5 @@ if __name__ == "__main__":
     sheet = make_template(ab, a.n, a.seed, ex)
     sheet.to_csv("gold_template.csv", index=False)
     open("gold_allowed_values.txt", "w", encoding="utf-8").write(allowed_values_text())
-    print(f"wrote gold_template.csv ({len(sheet)} papers) and gold_allowed_values.txt")
-    print("Give each annotator their own copy. Do not show them the AI output.")
+    log.info(f"wrote gold_template.csv ({len(sheet)} papers) and gold_allowed_values.txt")
+    log.info("Give each annotator their own copy. Do not show them the AI output.")

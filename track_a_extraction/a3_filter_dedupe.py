@@ -14,6 +14,9 @@
 
 import re
 import pandas as pd
+import logging
+
+log = logging.getLogger(__name__)
 
 RELEVANT_TERMS = [
     "paroxysmal", "microvascular decompression", "mri", "magnetic resonance",
@@ -30,7 +33,7 @@ MIN_ABSTRACT_LEN = 200
 _REL_RE = re.compile(r"\b(" + "|".join(re.escape(t) for t in RELEVANT_TERMS) + r")\b", re.I)
 
 
-def clean_title(title):
+def clean_title(title: str) -> str:
     t = re.sub(r"[^a-z0-9\s]", "", str(title).lower())
     return re.sub(r"\s+", " ", t).strip()
 
@@ -39,7 +42,7 @@ def pubtypes(row):
     return {p.strip().lower() for p in str(row.get("publication_types", "")).split("|") if p.strip()}
 
 
-def apply_filters(df):
+def apply_filters(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Return (kept_df, excluded_df). excluded_df has an 'exclude_reason' column."""
     df = df.copy()
     df["exclude_reason"] = ""
@@ -77,19 +80,20 @@ def apply_filters(df):
     low = abstract.str.lower()
     df["maybe_review_wording"] = low.apply(lambda a: any(p in a for p in REVIEW_PHRASES))
 
-    print("--- corpus flow ---")
+    log.info("--- corpus flow ---")
     for name, n in flow:
-        print(f"{name:35s} {n}")
+        log.info(f"{name:35s} {n}")
 
     kept = df[df["exclude_reason"] == ""].drop(columns=["_tc", "exclude_reason"]).reset_index(drop=True)
     excluded = df[df["exclude_reason"] != ""].drop(columns=["_tc"])
-    print("\nexclusion reasons:\n", excluded["exclude_reason"].value_counts().to_string())
+    log.info("\nexclusion reasons:\n%s", excluded["exclude_reason"].value_counts().to_string())
     return kept, excluded
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
     df = pd.read_csv("abstracts_raw.csv", dtype={"pmid": str})
     kept, excluded = apply_filters(df)
     kept.to_csv("abstracts_filtered.csv", index=False)
     excluded.to_csv("excluded.csv", index=False)
-    print(f"\nsaved {len(kept)} rows to abstracts_filtered.csv, {len(excluded)} to excluded.csv")
+    log.info(f"\nsaved {len(kept)} rows to abstracts_filtered.csv, {len(excluded)} to excluded.csv")

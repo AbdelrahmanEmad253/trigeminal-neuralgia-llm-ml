@@ -8,6 +8,9 @@ import re
 import numpy as np
 import pandas as pd
 from b0_schema import CLEAN_COLUMNS, TARGET_CLASS, TARGET_OUTCOME
+import logging
+
+log = logging.getLogger(__name__)
 
 NR = "not_reported"
 
@@ -16,7 +19,7 @@ def _s(x):
     return "" if x is None or (isinstance(x, float) and np.isnan(x)) else str(x).strip().lower()
 
 
-def parse_age(x):
+def parse_age(x: object) -> float:
     s = _s(x)
     nums = [float(n) for n in re.findall(r"\d+(?:\.\d+)?", s)]
     if not nums:
@@ -27,7 +30,7 @@ def parse_age(x):
     return age if 0 <= age <= 110 else np.nan
 
 
-def parse_duration_months(x):
+def parse_duration_months(x: object) -> float:
     s = _s(x)
     if not s or s == NR:
         return np.nan
@@ -53,12 +56,12 @@ def _branch_has(s, n, name):
     return bool(re.search(rf"\bv\s*{n}\b", s))
 
 
-def pick(x, mapping, default=NR):
+def pick(x: object, mapping: dict, default: str = NR) -> str:
     s = _s(x).replace(" ", "_")
     return mapping.get(s, default if s in ("", NR) else "unmapped:" + s)
 
 
-def multi_hot(text, keyword_map):
+def multi_hot(text: object, keyword_map: dict) -> dict[str, int]:
     s = _s(text)
     return {col: int(any(k in s for k in kws)) for col, kws in keyword_map.items()}
 
@@ -77,7 +80,7 @@ TX_KW = {
 }
 
 
-def outcome_from_row(row):
+def outcome_from_row(row: pd.Series) -> str:
     v = _s(row.get("treatment_outcome"))
     if v in ("complete_relief", "partial_relief", "no_relief"):
         return v
@@ -94,7 +97,7 @@ def outcome_from_row(row):
     return "unmapped:" + v[:30]
 
 
-def normalize(raw):
+def normalize(raw: pd.DataFrame) -> pd.DataFrame:
     out = pd.DataFrame(index=raw.index)
     out["case_id"] = raw["case_id"] if "case_id" in raw else raw["pmid"].astype(str) + "_" + raw.groupby("pmid").cumcount().astype(str)
     out["pmid"] = raw["pmid"].astype(str)
@@ -156,23 +159,24 @@ def _vessel(x, mapping):
 
 
 def _unmapped_report(clean):
-    print("--- unmapped_report (anything starting 'unmapped:' needs a keyword/mapping) ---")
+    log.info("--- unmapped_report (anything starting 'unmapped:' needs a keyword/mapping) ---")
     bad = 0
     for c in clean.columns:
         if clean[c].dtype == object:
             vals = clean[c][clean[c].astype(str).str.startswith("unmapped:")]
             if len(vals):
                 bad += len(vals)
-                print(f"{c}: {vals.value_counts().head(10).to_dict()}")
-    print("none" if bad == 0 else f"{bad} unmapped cells")
+                log.info(f"{c}: {vals.value_counts().head(10).to_dict()}")
+    log.info("none" if bad == 0 else f"{bad} unmapped cells")
 
 
-def load_and_normalize(path):
+def load_and_normalize(path: str) -> pd.DataFrame:
     return normalize(pd.read_csv(path, dtype={"pmid": str}))
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
     import sys
     df = load_and_normalize(sys.argv[1])
     df.to_csv("clean_dataset.csv", index=False)
-    print(df.shape, "-> clean_dataset.csv")
+    log.info("%s -> clean_dataset.csv", df.shape)
