@@ -1,0 +1,16 @@
+model,label,precision,recall,f1
+dummy_most_frequent,complete_relief,0.0,0.0,0.0
+dummy_most_frequent,no_relief,0.365,1.0,0.535
+dummy_most_frequent,partial_relief,0.0,0.0,0.0
+dummy_stratified,complete_relief,0.383,0.266,0.314
+dummy_stratified,no_relief,0.409,0.369,0.388
+dummy_stratified,partial_relief,0.326,0.49,0.391
+logreg,complete_relief,0.597,0.607,0.597
+logreg,no_relief,0.605,0.6,0.596
+logreg,partial_relief,0.331,0.319,0.322
+random_forest,complete_relief,0.584,0.649,0.61
+random_forest,no_relief,0.579,0.679,0.62
+random_forest,partial_relief,0.315,0.186,0.228
+svm_rbf,complete_relief,0.536,0.595,0.56
+svm_rbf,no_relief,0.585,0.596,0.583
+svm_rbf,partial_relief,0.298,0.231,0.256

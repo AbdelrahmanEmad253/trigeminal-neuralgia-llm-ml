@@ -1,0 +1,15 @@
+.env
+__pycache__/
+.pytest_cache/
+.idea/
+*.jsonl
+pmids.txt
+search_log.json
+abstracts_*.csv
+excluded.csv
+extracted_structured.csv
+aggregate_series.csv
+gold*.csv
+a7_free_text_review.csv
+clean_dataset.csv
+track_b_modeling/outputs/real_*

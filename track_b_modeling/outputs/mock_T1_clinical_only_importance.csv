@@ -1,0 +1,16 @@
+feature,mean
+patient_age,0.1011
+laterality,0.0394
+trig_chewing,0.0105
+symptom_duration_months,0.0075
+trig_cold_wind,0.0073
+triggers_reported,0.0046
+trig_hygiene,0.0014
+sex,0.0002
+trig_other,0.0
+branch_V2,-0.0005
+pain_character,-0.0033
+branch_V1,-0.0063
+trig_speaking,-0.0064
+branch_V3,-0.0102
+trig_touch,-0.0115
